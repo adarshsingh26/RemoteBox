@@ -2,15 +2,20 @@ import socket
 from PIL import Image, ImageGrab
 import pygetwindow
 import connection
-import sys
+# import sys
+import os
+import string
+import random
 import win32gui
-import time
+import requests
+import re
 from io import BytesIO
-# from queue import Queue
 from threading import Thread
-from multiprocessing import Process, Queue as Multiprocess_queue
+from multiprocessing import freeze_support, Process, Queue as Multiprocess_queue
 from pynput.keyboard import Listener as Key_listener
 from pynput.mouse import Button, Listener as Mouse_listener
+from pyngrok import ngrok
+from pyngrok.conf import PyngrokConfig
 
 
 def send_event(msg, sock):
@@ -39,15 +44,6 @@ def scale_x_y(x, y, cli_width, cli_height, dis_width, dis_height):
     x *= scale_x
     y *= scale_y
     return round(x, 2), round(y, 2)
-
-
-# def callback_for_mouse(event_code, x, y, flags, param):
-#     if event_code == 0:
-#         mouse_event_queue.put(event_code)
-#         mouse_event_queue.put(x)
-#         mouse_event_queue.put(y)
-#     elif event_code in range(1, 10):
-#         mouse_event_queue.put(event_code)
 
 
 def check_within_display(x, y, resize, cli_width, cli_height, dis_width, dis_height):
@@ -118,8 +114,8 @@ def recv_and_put_into_queue(client_socket, jpeg_queue):
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
         print(e.strerror)
         print(">>Exiting the program..")
-        client_socket.close()
-        sys.exit()
+        # client_socket.close()
+        # sys.exit()
 
 
 def display_data(jpeg_queue, dis_width, dis_height, resize):
@@ -137,11 +133,11 @@ def display_data(jpeg_queue, dis_width, dis_height, resize):
             if event.type == pygame.QUIT:
                 display = False
                 break
-        start_time = time.time()
+        # start_time = time.time()
         jpeg_buffer = BytesIO(jpeg_queue.get())
         img = Image.open(jpeg_buffer)
         py_image = pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
-        print(f"Display: {(time.time() - start_time):.4f}")
+        # print(f"Display: {(time.time() - start_time):.4f}")
         if resize:
             py_image = pygame.transform.scale(py_image, (dis_width, dis_height))
             # img = img.resize((display_width, display_height))
@@ -165,7 +161,17 @@ def compare_and_compute_resolution(cli_width, cli_height, ser_width, ser_height)
         return cli_width, cli_height
 
 
+def setup_ngrok():
+    pyngrok_config = PyngrokConfig(region="in")
+    ngrok.set_auth_token("1grzncEjZVA1zO8B9f2G81VqcAW_NVsgbVe3RrqB1wqVGooS")
+    url = ngrok.connect(1234, "tcp", pyngrok_config=pyngrok_config)
+    computer_name = re.search(r"//(.+):", url).group(1)
+    port_no = re.search(r":(\d+)", url).group(1)
+    return computer_name, port_no
+
+
 if __name__ == "__main__":
+    freeze_support()
     server_width, server_height = ImageGrab.grab().size
     resize_option = False
     resolution_tuple = ((7680, 4320), (3840, 2160), (2560, 1440), (1920, 1080), (1600, 900), (1366, 768), (1280, 720),
@@ -173,19 +179,49 @@ if __name__ == "__main__":
                         (2048, 1536), (1920, 1440), (1856, 1392), (1600, 1200), (1440, 1080), (1400, 1050), (1280, 960),
                         (1024, 768), (960, 720), (800, 600), (640, 480))
 
-    print(">>REMOTE DESKTOP APPLICATION(Author: 'Adarsh Singh' @Overflow)")
-    print(">>NOTE: This program will allow you to CONTROL other person Desktop.")
-    password = ""
+    print(">>>   Remote Desktop Application   (Coded By: 'ADARSH SINGH' @Overflow) <<<")
     print("\n")
-    while len(password) < 6:
-        password = input("Set a password for this session(MINIMUM 6 characters):")
-    print(">>Waiting for the client/other person to connect...")
-    SERVER_IP = socket.gethostbyname(socket.gethostname())
+    print("Connection mode:")
+    print("1)IP            (Good Performance)")
+    print("2)Computer name (Normal Performance)")
+
+    # print("\n")
+    # while len(password) < 6:
+    #     password = input("Set a password for this session(MINIMUM 6 characters):")
+    # print(">>Waiting for the client/other person to connect...")
+    connection_choice = True
+    SERVER_IP = str()
+    port = str()
+    public_ip = str()
     SERVER_PORT = 1234
+    password = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    while connection_choice:
+        choice = input("Choose an option(1 or 2):")
+        if choice == "1" or choice == "2":
+            os.system("cls")
+            print(">>NOTE: This program will allow you to CONTROL other computer Desktop.")
+            print(">>Remote control details")
+            print("\n")
+            if choice == "1":
+                SERVER_IP = socket.gethostbyname(socket.gethostname())          # Local IP
+                public_ip = requests.get('https://api.ipify.org').text
+                print(f"LOCAL IP      --> {SERVER_IP:12} (Works when on same wifi or network)")
+                print(f"PUBLIC IP     --> {public_ip:12} (Works when on different network.)")
+                print(f"Port no       --> {SERVER_PORT}")
+            elif choice == "2":
+                SERVER_IP = "127.0.0.1"
+                SERVER_NAME, port = setup_ngrok()
+                print(f"Computer name --> {SERVER_NAME} (Works in any network scenario)")
+                print(f"Port no       --> {port}")
+            print(f"Password      --> {password}")
+            print(">>Waiting for the other computer to connect...")
+            connection_choice = False
+        else:
+            print("Invalid option.Choose either 1 or 2")
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((SERVER_IP, SERVER_PORT))
-    s.listen(5)
+    s.listen(1)
     accept_request = True
     while accept_request:
         clientsocket, address = s.accept()

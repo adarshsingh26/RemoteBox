@@ -6,9 +6,7 @@ import os
 import time
 from PIL import Image,  ImageGrab
 from io import BytesIO
-# from queue import Queue
-from threading import Thread
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, freeze_support
 from pynput.mouse import Button, Controller as Mouse_controller
 from pynput.keyboard import Key, Controller as Keyboard_controller
 
@@ -77,7 +75,7 @@ def capture_screenshot(screenshot_queue, cli_width, cli_height):
     mon = {"top": 0, "left": 0, "width": cli_width, "height": cli_height}
     capture = True
     while capture:
-        start_time = time.time()
+        # start_time = time.time()
         screenshot = sct.grab(mon)
         pil_image_obj = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
         buffer = BytesIO()
@@ -86,17 +84,17 @@ def capture_screenshot(screenshot_queue, cli_width, cli_height):
         pil_image_obj.save(buffer, format='jpeg', quality=15)
         screenshot_queue.put(buffer.getvalue())
         buffer.close()
-        print(f"Screenshot: {(time.time()-start_time):.4f}")
+        # print(f"Screenshot: {(time.time()-start_time):.4f}")
 
 
 def get_from_queue_and_send(screenshot_queue, sock):
     header_size = 10
     try:
         while True:
-            start_time = time.time()
+            # start_time = time.time()
             jpeg_data = screenshot_queue.get()
             connection.send_data(sock, header_size, jpeg_data)
-            print(f"Upload: {(time.time() - start_time):.4f}")
+            # print(f"Upload: {(time.time() - start_time):.4f}")
     except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
         print(exception_obj.strerror)
         time.sleep(15)
@@ -115,45 +113,48 @@ def retry(msg):
 
 
 if __name__ == "__main__":
+    freeze_support()
     client_width, client_height = ImageGrab.grab().size
     # resize_option = False
     execute = True
-    SERVER_IP = ""
-    SERVER_PORT = 1234
+    SERVER_IP = str()
+    SERVER_PORT = int()
     while execute:
         try:
             os.system("cls")
-            print(">>REMOTE DESKTOP APPLICATION(Author: 'Adarsh Singh' @Overflow)")
-            print(">>NOTE: This program will GIVE other person your Desktop control.")
+            print(">>>   Remote Desktop Application   (Coded By: 'ADARSH SINGH' @Overflow) <<<")
+            print(">>NOTE: This program will GIVE other computer your Desktop control.")
             print("\n")
 
             if SERVER_IP:
-                option = retry(f"connect to {SERVER_IP}? If YES enter 'Y' else enter 'N':")
+                option = retry(f"Connect to {SERVER_IP} on port {SERVER_PORT}? If YES enter 'Y' else enter 'N':")
                 if not option:
-                    SERVER_IP = input("Enter the server IP to connect to:")
+                    SERVER_IP = input("Enter the other computer IP/name to connect to:")
+                    SERVER_PORT = int(input("Enter the port no:"))
             else:
-                SERVER_IP = input("Enter the server IP to connect to:")
+                SERVER_IP = input("Enter the other computer IP/name to connect to:")
+                SERVER_PORT = int(input("Enter the port no:"))
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((SERVER_IP, SERVER_PORT))
-            SERVER_PASS = bytes(input("Enter the password to connect to the server:"), "utf-8")
+            SERVER_PASS = bytes(input("Enter the password set by the other computer:"), "utf-8")
             connection.send_data(s, 2, SERVER_PASS)      # send password
             login = connection.receive_data(s, 2, bytes(), 1024)
 
             if login[0].decode("utf-8") != "1":
                 print("WRONG Password!..")
                 print("\n")
-                if not retry(">>Try again? If YES enter 'Y' else to exit enter 'N':"):
+                if not retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
                     sys.exit()
             else:
                 print("Connected to the server!")
-                print(f"{SERVER_IP} can CONTROL your Desktop now..")
+                print(f"{SERVER_IP} can CONTROL your Desktop now!")
                 execute = False
 
         except OSError as e:
             print(e.strerror)
             print("\n")
-            if not retry(">>Try again? If YES enter 'Y' else to exit enter 'N':"):
+            if not retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
                 sys.exit()
             # print(f"ERROR no {e.errno} occurred exiting the program ..... ")
 

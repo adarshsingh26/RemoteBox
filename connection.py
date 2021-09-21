@@ -1,4 +1,4 @@
-
+# Receive data in chunks and build the complete message.
 def receive_data(socket, header_size, partial_prev_msg, buffer_size=65536):
 
     header_msg = bytes()
@@ -32,7 +32,7 @@ def receive_data(socket, header_size, partial_prev_msg, buffer_size=65536):
     else:
         return None
 
-
+#Send data with a header attached to the message
 def send_data(socket, header_size, msg_data):
     msg_len = len(msg_data)
     if msg_len:

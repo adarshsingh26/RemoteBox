@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import ctypes
+import lz4.frame
 from PIL import Image,  ImageGrab
 from io import BytesIO
 from multiprocessing import Process, Queue, freeze_support
@@ -55,7 +56,7 @@ def receive_events(sock, wallpaper_path):
 
     try:
         while True:
-            msg = connection.receive_data(sock, header_size, partial_prev_msg)
+            msg = connection.receive_data(sock, header_size, partial_prev_msg, 1024)
             if msg:
                 data = msg[0].decode("utf-8")
                 event_code = int(data[:2])
@@ -86,7 +87,7 @@ def capture_screenshot(screenshot_queue, cli_width, cli_height):
         # if resize:
         #     pil_image_obj = pil_image_obj.resize(display_width, display_height)
         pil_image_obj.save(buffer, format='jpeg', quality=20)
-        screenshot_queue.put(buffer.getvalue())
+        screenshot_queue.put(lz4.frame.compress(buffer.getvalue()))
         buffer.close()
         # print(f"Screenshot: {(time.time()-start_time):.4f}")
 

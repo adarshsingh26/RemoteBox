@@ -9,6 +9,7 @@ import random
 import win32gui
 import requests
 import re
+import lz4.frame
 from io import BytesIO
 from threading import Thread
 from multiprocessing import freeze_support, Process, Queue as Multiprocess_queue
@@ -19,7 +20,7 @@ from pyngrok import conf
 from pyngrok.conf import PyngrokConfig
 
 
-execute_thread = True
+# execute_thread = True
 
 
 def send_event(msg, sock):
@@ -50,7 +51,7 @@ def scale_x_y(x, y, cli_width, cli_height, dis_width, dis_height):
     scale_y = cli_height / dis_height
     x *= scale_x
     y *= scale_y
-    return round(x, 2), round(y, 2)
+    return round(x, 1), round(y, 1)
 
 
 def check_within_display(x, y, resize, cli_width, cli_height, dis_width, dis_height):
@@ -115,10 +116,10 @@ def recv_and_put_into_queue(client_socket, jpeg_queue):
     partial_prev_msg = bytes()
 
     try:
-        while execute_thread:
+        while True:
             msg = connection.receive_data(client_socket, header_size, partial_prev_msg)
             if msg:
-                jpeg_queue.put(msg[0])  # msg[0]--> new msg
+                jpeg_queue.put(lz4.frame.decompress(msg[0]))  # msg[0]--> new msg
                 partial_prev_msg = msg[1]  # msg[1]--> partial_prev_msg
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
         print(e.strerror)
@@ -127,7 +128,7 @@ def recv_and_put_into_queue(client_socket, jpeg_queue):
     finally:
         print("Program terminated.You could close the program now.")
         time.sleep(10)
-        process2.kill()
+        # process2.kill()
         client_socket.close()
 
 
@@ -296,8 +297,9 @@ if __name__ == "__main__":
     listener_key.join()
     listener_mouse.stop()
     listener_mouse.join()
-    execute_thread = False
-    thread1.join()
+    # execute_thread = False
+    # thread1.join()
+
     # print("Main process ended")
     # print(f"Process 1: {process1.is_alive()}")
     # print(f"Process 2: {process2.is_alive()}")

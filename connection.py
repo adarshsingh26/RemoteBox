@@ -34,7 +34,6 @@ def receive_data(socket, header_size, partial_prev_msg, buffer_size=65536):
 
 
 def send_data(socket, header_size, msg_data):
-
     msg_len = len(msg_data)
     if msg_len:
         header = f"{msg_len:<{header_size}}"

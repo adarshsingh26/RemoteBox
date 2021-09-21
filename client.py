@@ -4,6 +4,7 @@ import connection
 import sys
 import os
 import time
+import ctypes
 from PIL import Image,  ImageGrab
 from io import BytesIO
 from multiprocessing import Process, Queue, freeze_support
@@ -31,20 +32,18 @@ def simulate(mouse, keyboard, button_code, key_map, event_code, msg):
     elif event_code == 0:
         x, y = msg.split(",")
         mouse.position = (float(x), float(y))
-    elif event_code == 10:
+    elif event_code == 7:
         dx, dy = msg.split(",")
         mouse.scroll(int(dx), int(dy))
     elif event_code in (1, 2, 3):
         mouse.press(find_button(button_code, event_code))
     elif event_code in (4, 5, 6):
         mouse.release(find_button(button_code, event_code))
-    elif event_code in (7, 8, 9):
-        mouse.click(find_button(button_code, event_code), count=2)
 
 
-def receive_events(sock):
+def receive_events(sock, wallpaper_path):
     mouse = Mouse_controller()
-    button_code = {(1, 4, 7): Button.left, (2, 5, 8): Button.right, (3, 6, 9): Button.middle}
+    button_code = {(1, 4): Button.left, (2, 5): Button.right, (3, 6): Button.middle}
 
     keyboard = Keyboard_controller()
     key_map = dict()
@@ -64,9 +63,14 @@ def receive_events(sock):
                 partial_prev_msg = msg[1]                                                 # msg[1]--> partial_prev_msg
     except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
         print(exception_obj.strerror)
-        time.sleep(15)
+    finally:
+        if wallpaper_path:
+            set_desktop_background(wallpaper_path)
+        else:
+            print("Unfortunately wallpaper did not restored!")
+        print("Program will exit in 10 sec...")
+        time.sleep(10)
         sock.close()
-        sys.exit()
 
 
 def capture_screenshot(screenshot_queue, cli_width, cli_height):
@@ -81,7 +85,7 @@ def capture_screenshot(screenshot_queue, cli_width, cli_height):
         buffer = BytesIO()
         # if resize:
         #     pil_image_obj = pil_image_obj.resize(display_width, display_height)
-        pil_image_obj.save(buffer, format='jpeg', quality=15)
+        pil_image_obj.save(buffer, format='jpeg', quality=20)
         screenshot_queue.put(buffer.getvalue())
         buffer.close()
         # print(f"Screenshot: {(time.time()-start_time):.4f}")
@@ -95,21 +99,22 @@ def get_from_queue_and_send(screenshot_queue, sock):
             jpeg_data = screenshot_queue.get()
             connection.send_data(sock, header_size, jpeg_data)
             # print(f"Upload: {(time.time() - start_time):.4f}")
-    except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
-        print(exception_obj.strerror)
-        time.sleep(15)
-        sock.close()
-        sys.exit()
+    except (ConnectionAbortedError, ConnectionResetError, OSError):
+        pass
 
 
-def retry(msg):
-    check = True
-    while check:
-        choice = input(msg)
-        if choice.lower() == "y":
-            return True
-        elif choice.lower() == "n":
-            return False
+def get_desktop_background_path():
+    path_buffer = ctypes.create_unicode_buffer(512)
+    success = ctypes.windll.user32.SystemParametersInfoW(115, len(path_buffer), path_buffer, 0)
+    if success:
+        return path_buffer.value
+    else:
+        return None
+
+
+def set_desktop_background(path):
+    if path or path == "":              # empty path sets it to black
+        ctypes.windll.user32.SystemParametersInfoW(20, 0, path, 0)
 
 
 if __name__ == "__main__":
@@ -117,6 +122,7 @@ if __name__ == "__main__":
     client_width, client_height = ImageGrab.grab().size
     # resize_option = False
     execute = True
+    PATH = get_desktop_background_path()
     SERVER_IP = str()
     SERVER_PORT = int()
     while execute:
@@ -127,7 +133,7 @@ if __name__ == "__main__":
             print("\n")
 
             if SERVER_IP:
-                option = retry(f"Connect to {SERVER_IP} on port {SERVER_PORT}? If YES enter 'Y' else enter 'N':")
+                option = connection.retry(f"Connect to {SERVER_IP} on port {SERVER_PORT}? If YES enter 'Y' else enter 'N':")
                 if not option:
                     SERVER_IP = input("Enter the other computer IP/name to connect to:")
                     SERVER_PORT = int(input("Enter the port no:"))
@@ -143,18 +149,22 @@ if __name__ == "__main__":
 
             if login[0].decode("utf-8") != "1":
                 print("WRONG Password!..")
-                print("\n")
-                if not retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
+                # print("\n")
+                if not connection.retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
                     sys.exit()
             else:
-                print("Connected to the server!")
-                print(f"{SERVER_IP} can CONTROL your Desktop now!")
+                print("\n")
+                print("Connected to the remote computer!")
+                disable_wallpaper = connection.receive_data(s, 2, bytes(), 1024)
+                if disable_wallpaper[0].decode("utf-8") == "True":
+                    set_desktop_background("")
+                print(f"Your Desktop is being remotely controlled now!")
                 execute = False
 
         except OSError as e:
             print(e.strerror)
             print("\n")
-            if not retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
+            if not connection.retry(">>Want to try again? If YES enter 'Y' else to exit enter 'N':"):
                 sys.exit()
             # print(f"ERROR no {e.errno} occurred exiting the program ..... ")
 
@@ -174,6 +184,6 @@ if __name__ == "__main__":
     process2 = Process(target=get_from_queue_and_send, args=(screenshot_sync_queue, s), daemon=True)
     process2.start()
 
-    process3 = Process(target=receive_events, args=(s,), daemon=True)
+    process3 = Process(target=receive_events, args=(s, PATH))
     process3.start()
     process3.join()

@@ -39,3 +39,13 @@ def send_data(socket, header_size, msg_data):
     if msg_len:
         header = f"{msg_len:<{header_size}}"
         socket.send(bytes(header, "utf-8") + msg_data)
+
+
+def retry(msg):
+    check = True
+    while check:
+        choice = input(msg)
+        if choice.lower() == "y":
+            return True
+        elif choice.lower() == "n":
+            return False

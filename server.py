@@ -3,35 +3,40 @@ from PIL import Image, ImageGrab
 import pygetwindow
 import connection
 import sys
-import pygame
 import win32gui
+import time
 from io import BytesIO
 from queue import Queue
+from multiprocessing import Queue as Multiprocess_queue
 from threading import Thread
+from multiprocessing import Process
 from pynput.keyboard import Listener as Key_listener
 from pynput.mouse import Button, Listener as Mouse_listener
 
 
-def send_event(msg):
-    connection.send_data(clientsocket, 2, msg)
+def send_event(msg, sock):
+    connection.send_data(sock, 2, msg)
 
 
-def get_mouse_data_from_queue(event_queue):
+def get_mouse_data_from_queue(sock, event_queue, resize, cli_width, cli_height, dis_width, dis_height):
     while True:
         event_code = event_queue.get()
+        x = event_queue.get()
+        y = event_queue.get()
+        x, y, within_display = check_within_display(x, y, resize, cli_width, cli_height, dis_width, dis_height)
         if event_code == 0 or event_code == 10:
-            x = event_queue.get()
-            y = event_queue.get()
-            msg = bytes(f"{event_code:<2}" + str(x) + "," + str(y), "utf-8")
-            send_event(msg)
+            if within_display:
+                msg = bytes(f"{event_code:<2}" + str(x) + "," + str(y), "utf-8")
+                send_event(msg, sock)
         elif event_code in range(1, 10):
-            msg = bytes(f"{event_code:<2}", "utf-8")
-            send_event(msg)
+            if within_display:
+                msg = bytes(f"{event_code:<2}", "utf-8")
+                send_event(msg, sock)
 
 
-def scale_x_y(x, y):
-    scale_x = int(client_width) / display_width
-    scale_y = int(client_height) / display_height
+def scale_x_y(x, y, cli_width, cli_height, dis_width, dis_height):
+    scale_x = cli_width / dis_width
+    scale_y = cli_height / dis_height
     x *= scale_x
     y *= scale_y
     return round(x, 2), round(y, 2)
@@ -46,55 +51,51 @@ def scale_x_y(x, y):
 #         mouse_event_queue.put(event_code)
 
 
-def check_within_display(x, y):
-    active_window = pygetwindow.getWindowsWithTitle(f"Remote Desktop of {address[0]}")
+def check_within_display(x, y, resize, cli_width, cli_height, dis_width, dis_height):
+    active_window = pygetwindow.getWindowsWithTitle(f"Remote Desktop")
     if active_window and (len(active_window) == 1):
         x, y = win32gui.ScreenToClient(active_window[0]._hWnd, (x, y))
-        if (0 <= x <= display_width) and (0 <= y <= display_height):
-            if resize_option:
-                x, y = scale_x_y(x, y)
+        if (0 <= x <= dis_width) and (0 <= y <= dis_height):
+            if resize:
+                x, y = scale_x_y(x, y, cli_width, cli_height, dis_width, dis_height)
             return x, y, True
     return x, y, False
 
 
 def on_move(x, y):
-    x, y, within_display = check_within_display(x, y)
-    event_code = 0
-    if within_display:
-        mouse_event_queue.put(event_code)
+    mouse_event_queue.put(0)  # event_code
+    mouse_event_queue.put(x)
+    mouse_event_queue.put(y)
+
+
+def on_click(x, y, button, pressed):
+    if pressed:  # mouse down(press)
+        mouse_event_queue.put(button_code.get(button)[0])
+        mouse_event_queue.put(x)
+        mouse_event_queue.put(y)
+    else:  # mouse up(release)
+        mouse_event_queue.put(button_code.get(button)[1])
         mouse_event_queue.put(x)
         mouse_event_queue.put(y)
 
 
-def on_click(x, y, button, pressed):
-    x, y, within_display = check_within_display(x, y)
-    if pressed:  # mouse down(press)
-        if within_display:
-            mouse_event_queue.put(button_code.get(button)[0])
-    else:  # mouse up(release)
-        if within_display:
-            mouse_event_queue.put(button_code.get(button)[1])
-
-
 def on_scroll(x, y, dx, dy):
-    x, y, within_display = check_within_display(x, y)
-    event_code = 10
-    if within_display:
-        mouse_event_queue.put(event_code)
-        mouse_event_queue.put(dx)
-        mouse_event_queue.put(dy)
+    mouse_event_queue.put(10)   # event_code
+    mouse_event_queue.put(dx)
+    mouse_event_queue.put(dy)
 
 
 def key_events(key, event_code):
     active_window = pygetwindow.getActiveWindow()
     if active_window:
-        if active_window.title == f"Remote Desktop of {address[0]}":
+        if active_window.title == f"Remote Desktop":
             try:
-                msg = bytes(event_code + key.char, "utf-8")  # alphanumeric key
-                send_event(msg)
+                if key.char:
+                    msg = bytes(event_code + key.char, "utf-8")  # alphanumeric key
+                    send_event(msg, clientsocket)
             except AttributeError:
                 msg = bytes(event_code + key.name, "utf-8")  # special key
-                send_event(msg)
+                send_event(msg, clientsocket)
 
 
 def on_press(key):
@@ -126,12 +127,12 @@ def recv_and_put_into_queue(client_socket, jpeg_queue):
 def display_data(jpeg_queue):
     pygame.init()
     display_surface = pygame.display.set_mode((display_width, display_height))
-    pygame.display.set_caption(f"Remote Desktop of {address[0]}")
+    pygame.display.set_caption(f"Remote Desktop")
     clock = pygame.time.Clock()
     display = True
 
     while display:
-        # start_time = time.time()
+        start_time = time.time()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 display = False
@@ -147,7 +148,7 @@ def display_data(jpeg_queue):
         display_surface.blit(py_image, (0, 0))
         pygame.display.flip()
         clock.tick(60)
-        # print(f"Display: {(time.time() - start_time):.2f}")
+        print(f"Display: {(time.time() - start_time):.4f}")
     pygame.quit()
 
 
@@ -164,6 +165,9 @@ def compare_and_compute_resolution(cli_width, cli_height, ser_width, ser_height)
 
 
 if __name__ == "__main__":
+    import os
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+    import pygame
     server_width, server_height = ImageGrab.grab().size
     resize_option = False
     resolution_tuple = ((7680, 4320), (3840, 2160), (2560, 1440), (1920, 1080), (1600, 900), (1366, 768), (1280, 720),
@@ -216,9 +220,14 @@ if __name__ == "__main__":
     listener = Key_listener(on_press=on_press, on_release=on_release)
     listener.start()
 
-    mouse_event_queue = Queue()
-    thread2 = Thread(target=get_mouse_data_from_queue, args=(mouse_event_queue,), daemon=True)
-    thread2.start()
+    # coordinate_queue = Queue()
+    # thread2 = Thread(target=check_within_display, args=(), daemon=True)
+
+    mouse_event_queue = Multiprocess_queue()
+    process1 = Process(target=get_mouse_data_from_queue, args=(clientsocket, mouse_event_queue, resize_option,
+                                                               int(client_width), int(client_height), display_width,
+                                                               display_height), daemon=True)
+    process1.start()
 
     button_code = {Button.left: (1, 4, 7), Button.right: (2, 5, 8), Button.middle: (3, 6, 9)}
 

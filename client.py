@@ -2,22 +2,24 @@ import socket
 import mss
 import connection
 import sys
+import os
 import time
 from PIL import Image,  ImageGrab
 from io import BytesIO
 from queue import Queue
 from threading import Thread
+from multiprocessing import Process
 from pynput.mouse import Button, Controller as Mouse_controller
 from pynput.keyboard import Key, Controller as Keyboard_controller
 
 
-def find_button(event_code):
+def find_button(button_code, event_code):
     for key in button_code.keys():
         if event_code in key:
             return button_code.get(key)
 
 
-def simulate(event_code, msg):
+def simulate(mouse, keyboard, button_code, key_map, event_code, msg):
     if event_code == -1:
         if len(msg) == 1:
             keyboard.press(msg)
@@ -35,29 +37,37 @@ def simulate(event_code, msg):
         dx, dy = msg.split(",")
         mouse.scroll(int(dx), int(dy))
     elif event_code in (1, 2, 3):
-        mouse.press(find_button(event_code))
+        mouse.press(find_button(button_code, event_code))
     elif event_code in (4, 5, 6):
-        mouse.release(find_button(event_code))
+        mouse.release(find_button(button_code, event_code))
     elif event_code in (7, 8, 9):
-        mouse.click(find_button(event_code), count=2)
+        mouse.click(find_button(button_code, event_code), count=2)
 
 
-def receive_events():
+def receive_events(sock):
+    mouse = Mouse_controller()
+    button_code = {(1, 4, 7): Button.left, (2, 5, 8): Button.right, (3, 6, 9): Button.middle}
+
+    keyboard = Keyboard_controller()
+    key_map = dict()
+    for key_enum in Key:
+        key_map.setdefault(key_enum.name, key_enum)
+
     header_size = 2
     partial_prev_msg = bytes()
 
     try:
         while True:
-            msg = connection.receive_data(s, header_size, partial_prev_msg)
+            msg = connection.receive_data(sock, header_size, partial_prev_msg)
             if msg:
                 data = msg[0].decode("utf-8")
                 event_code = int(data[:2])
-                simulate(event_code, data[2:])                   # msg[0]--> new msg
-                partial_prev_msg = msg[1]                        # msg[1]--> partial_prev_msg
+                simulate(mouse, keyboard, button_code, key_map, event_code, data[2:])     # msg[0]--> new msg
+                partial_prev_msg = msg[1]                                                 # msg[1]--> partial_prev_msg
     except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
         print(exception_obj.strerror)
         time.sleep(15)
-        s.close()
+        sock.close()
         sys.exit()
 
 
@@ -94,9 +104,9 @@ def retry(msg):
     check = True
     while check:
         choice = input(msg)
-        if choice == "yes":
+        if choice.lower() == "y":
             return True
-        elif choice == "no":
+        elif choice.lower() == "n":
             return False
 
 
@@ -107,12 +117,13 @@ if __name__ == "__main__":
     SERVER_IP = ""
     while execute:
         try:
+            os.system("cls")
             print(">>REMOTE DESKTOP APPLICATION(Author: 'Adarsh Singh' @Overflow)")
             print(">>NOTE: This program will GIVE other person your Desktop control.")
             print("\n")
 
             if SERVER_IP:
-                option = retry(f"connect to {SERVER_IP}? If YES enter 'yes' else enter 'no':")
+                option = retry(f"connect to {SERVER_IP}? If YES enter 'Y' else enter 'N':")
                 if not option:
                     SERVER_IP = input("Enter the server IP to connect to:")
             else:
@@ -129,7 +140,7 @@ if __name__ == "__main__":
             if login[0].decode("utf-8") != "1":
                 print("WRONG Password!..")
                 print("\n")
-                if not retry(">>Would you like to login again? If YES enter 'yes' else to exit enter 'no':"):
+                if not retry(">>Try again? If YES enter 'Y' else to exit enter 'N':"):
                     sys.exit()
             else:
                 print("Connected to the server!")
@@ -139,7 +150,7 @@ if __name__ == "__main__":
         except OSError as e:
             print(e.strerror)
             print("\n")
-            if not retry(">>Would you like to login again? If YES enter 'yes' else to exit enter 'no':"):
+            if not retry(">>Try again? If YES enter 'Y' else to exit enter 'N':"):
                 sys.exit()
             # print(f"ERROR no {e.errno} occurred exiting the program ..... ")
 
@@ -155,15 +166,7 @@ if __name__ == "__main__":
     thread1 = Thread(target=capture_screenshot, args=(screenshot_sync_queue,), daemon=True)
     thread1.start()
 
-    mouse = Mouse_controller()
-    button_code = {(1, 4, 7): Button.left, (2, 5, 8): Button.right, (3, 6, 9): Button.middle}
-
-    keyboard = Keyboard_controller()
-    key_map = dict()
-    for key_enum in Key:
-        key_map.setdefault(key_enum.name, key_enum)
-
-    thread2 = Thread(target=receive_events, daemon=True)
-    thread2.start()
+    process1 = Process(target=receive_events, args=(s,), daemon=True)
+    process1.start()
 
     get_from_queue_and_send(screenshot_sync_queue)

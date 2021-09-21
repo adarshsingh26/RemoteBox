@@ -71,12 +71,13 @@ def receive_events(sock):
         sys.exit()
 
 
-def capture_screenshot(screenshot_queue):
+def capture_screenshot(screenshot_queue, cli_width, cli_height):
     sct = mss.mss()
     sct.compression_level = 6
-    mon = {"top": 0, "left": 0, "width": client_width, "height": client_height}
+    mon = {"top": 0, "left": 0, "width": cli_width, "height": cli_height}
     capture = True
     while capture:
+        start_time = time.time()
         screenshot = sct.grab(mon)
         pil_image_obj = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
         buffer = BytesIO()
@@ -85,14 +86,17 @@ def capture_screenshot(screenshot_queue):
         pil_image_obj.save(buffer, format='jpeg', quality=15)
         screenshot_queue.put(buffer.getvalue())
         buffer.close()
+        print(f"Screenshot: {(time.time()-start_time):.4f}")
 
 
 def get_from_queue_and_send(screenshot_queue, sock):
     header_size = 10
     try:
         while True:
+            start_time = time.time()
             jpeg_data = screenshot_queue.get()
             connection.send_data(sock, header_size, jpeg_data)
+            print(f"Upload: {(time.time() - start_time):.4f}")
     except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
         print(exception_obj.strerror)
         time.sleep(15)
@@ -115,6 +119,7 @@ if __name__ == "__main__":
     # resize_option = False
     execute = True
     SERVER_IP = ""
+    SERVER_PORT = 1234
     while execute:
         try:
             os.system("cls")
@@ -128,8 +133,6 @@ if __name__ == "__main__":
                     SERVER_IP = input("Enter the server IP to connect to:")
             else:
                 SERVER_IP = input("Enter the server IP to connect to:")
-
-            SERVER_PORT = 1234
 
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((SERVER_IP, SERVER_PORT))
@@ -162,13 +165,14 @@ if __name__ == "__main__":
     # if (client_width, client_height) != (display_width, display_height):
     #     resize_option = True
 
-    screenshot_sync_queue = Queue(15)
-    thread1 = Thread(target=capture_screenshot, args=(screenshot_sync_queue,), daemon=True)
-    thread1.start()
-
-    process1 = Process(target=receive_events, args=(s,), daemon=True)
+    screenshot_sync_queue = Queue(1)
+    process1 = Process(target=capture_screenshot, args=(screenshot_sync_queue, client_width, client_height), daemon=True
+                       )
     process1.start()
 
     process2 = Process(target=get_from_queue_and_send, args=(screenshot_sync_queue, s), daemon=True)
     process2.start()
-    process2.join()
+
+    process3 = Process(target=receive_events, args=(s,), daemon=True)
+    process3.start()
+    process3.join()

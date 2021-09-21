@@ -133,14 +133,15 @@ def display_data(jpeg_queue, dis_width, dis_height, resize):
     display = True
 
     while display:
-        start_time = time.time()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 display = False
                 break
+        start_time = time.time()
         jpeg_buffer = BytesIO(jpeg_queue.get())
         img = Image.open(jpeg_buffer)
         py_image = pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
+        print(f"Display: {(time.time() - start_time):.4f}")
         if resize:
             py_image = pygame.transform.scale(py_image, (dis_width, dis_height))
             # img = img.resize((display_width, display_height))
@@ -149,7 +150,6 @@ def display_data(jpeg_queue, dis_width, dis_height, resize):
         display_surface.blit(py_image, (0, 0))
         pygame.display.flip()
         clock.tick(60)
-        print(f"Display: {(time.time() - start_time):.4f}")
     pygame.quit()
 
 

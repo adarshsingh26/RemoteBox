@@ -6,10 +6,9 @@ import sys
 import win32gui
 import time
 from io import BytesIO
-from queue import Queue
-from multiprocessing import Queue as Multiprocess_queue
+# from queue import Queue
 from threading import Thread
-from multiprocessing import Process
+from multiprocessing import Process, Queue as Multiprocess_queue
 from pynput.keyboard import Listener as Key_listener
 from pynput.mouse import Button, Listener as Mouse_listener
 
@@ -117,16 +116,18 @@ def recv_and_put_into_queue(client_socket, jpeg_queue):
                 jpeg_queue.put(msg[0])  # msg[0]--> new msg
                 partial_prev_msg = msg[1]  # msg[1]--> partial_prev_msg
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
-        print(e)
-        # print(">>Connection closed by the client/other person..")
+        print(e.strerror)
         print(">>Exiting the program..")
         client_socket.close()
         sys.exit()
 
 
-def display_data(jpeg_queue):
+def display_data(jpeg_queue, dis_width, dis_height, resize):
+    import os
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+    import pygame
     pygame.init()
-    display_surface = pygame.display.set_mode((display_width, display_height))
+    display_surface = pygame.display.set_mode((dis_width, dis_height))
     pygame.display.set_caption(f"Remote Desktop")
     clock = pygame.time.Clock()
     display = True
@@ -140,8 +141,8 @@ def display_data(jpeg_queue):
         jpeg_buffer = BytesIO(jpeg_queue.get())
         img = Image.open(jpeg_buffer)
         py_image = pygame.image.frombuffer(img.tobytes(), img.size, img.mode)
-        if resize_option:
-            py_image = pygame.transform.scale(py_image, (display_width, display_height))
+        if resize:
+            py_image = pygame.transform.scale(py_image, (dis_width, dis_height))
             # img = img.resize((display_width, display_height))
         jpeg_buffer.close()
 
@@ -165,9 +166,6 @@ def compare_and_compute_resolution(cli_width, cli_height, ser_width, ser_height)
 
 
 if __name__ == "__main__":
-    import os
-    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-    import pygame
     server_width, server_height = ImageGrab.grab().size
     resize_option = False
     resolution_tuple = ((7680, 4320), (3840, 2160), (2560, 1440), (1920, 1080), (1600, 900), (1366, 768), (1280, 720),
@@ -213,15 +211,12 @@ if __name__ == "__main__":
     if (client_width, client_height) != (display_width, display_height):
         resize_option = True
 
-    jpeg_sync_queue = Queue()
+    jpeg_sync_queue = Multiprocess_queue()
     thread1 = Thread(target=recv_and_put_into_queue, args=(clientsocket, jpeg_sync_queue), daemon=True)
     thread1.start()
 
     listener = Key_listener(on_press=on_press, on_release=on_release)
     listener.start()
-
-    # coordinate_queue = Queue()
-    # thread2 = Thread(target=check_within_display, args=(), daemon=True)
 
     mouse_event_queue = Multiprocess_queue()
     process1 = Process(target=get_mouse_data_from_queue, args=(clientsocket, mouse_event_queue, resize_option,
@@ -234,4 +229,6 @@ if __name__ == "__main__":
     listener = Mouse_listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
     listener.start()
 
-    display_data(jpeg_sync_queue)
+    process2 = Process(target=display_data, args=(jpeg_sync_queue, display_width, display_height, resize_option))
+    process2.start()
+    process2.join()

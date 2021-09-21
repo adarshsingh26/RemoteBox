@@ -6,9 +6,9 @@ import os
 import time
 from PIL import Image,  ImageGrab
 from io import BytesIO
-from queue import Queue
+# from queue import Queue
 from threading import Thread
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from pynput.mouse import Button, Controller as Mouse_controller
 from pynput.keyboard import Key, Controller as Keyboard_controller
 
@@ -87,16 +87,16 @@ def capture_screenshot(screenshot_queue):
         buffer.close()
 
 
-def get_from_queue_and_send(screenshot_queue):
+def get_from_queue_and_send(screenshot_queue, sock):
     header_size = 10
     try:
         while True:
             jpeg_data = screenshot_queue.get()
-            connection.send_data(s, header_size, jpeg_data)
+            connection.send_data(sock, header_size, jpeg_data)
     except (ConnectionAbortedError, ConnectionResetError, OSError) as exception_obj:
         print(exception_obj.strerror)
         time.sleep(15)
-        s.close()
+        sock.close()
         sys.exit()
 
 
@@ -169,4 +169,6 @@ if __name__ == "__main__":
     process1 = Process(target=receive_events, args=(s,), daemon=True)
     process1.start()
 
-    get_from_queue_and_send(screenshot_sync_queue)
+    process2 = Process(target=get_from_queue_and_send, args=(screenshot_sync_queue, s), daemon=True)
+    process2.start()
+    process2.join()

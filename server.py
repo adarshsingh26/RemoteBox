@@ -289,7 +289,6 @@ def stop_listener():
     if CLIENT_CONNECTED:
         connection.send_data(command_client_socket, COMMAND_HEADER_SIZE, bytes("disconnect", "utf-8"))
     # Closing all the sockets
-    print("hii")
     if server_socket:
         server_socket.close()
     close_sockets()
@@ -309,7 +308,6 @@ def stop_listener():
         name_text.grid_forget()
         name_text.configure(state="normal")
         name_text.delete('1.0', tk.END)
-    print("bye")
     label_status.configure(font=myFont_normal, text="Idle", image=red_img)
     # Enable buttons
     connection_frame.grid(row=1, column=0, padx=120, pady=80, sticky=tk.W)

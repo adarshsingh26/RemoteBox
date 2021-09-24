@@ -286,6 +286,8 @@ def login():
 
                 print("\n")
                 print("Connected to the remote computer!")
+                #label_status.configure(state='normal')
+                label_status.grid()
                 execute = False
 
                 thread1 = Thread(target=listen_for_commands, daemon=True)
@@ -306,6 +308,8 @@ def login():
                 connect_button.configure(state="disabled")
 
         except OSError as e:
+            #label_status.configure(state='disabled')
+            label_status.grid_remove()
             print(e.strerror)
     else:
         print("Password is not 6 characters")
@@ -333,6 +337,9 @@ def disconnect(caller):
 
     # Disable
     disconnect_button.configure(state="disabled")
+    #label_status.configure(state='disabled')
+    label_status.grid_remove()
+
     access_button_frame.grid_forget()
     my_notebook.hide(1)
     my_notebook.hide(2)
@@ -353,6 +360,8 @@ def listen_for_commands():
         if (file_window is not None) and file_window.winfo_exists():
             file_window.destroy()
             print("top window destroyed")
+        #label_status.configure(state='disabled')
+        label_status.grid_remove()
         disconnect("message")
         print("Thread1 automatically exits")
 
@@ -756,6 +765,8 @@ if __name__ == "__main__":
     drive_img = tk.PhotoImage(file="file_icons\\drive.png")
     back_img = tk.PhotoImage(file="file_icons\\back.png")
 
+    green_img = tk.PhotoImage(file="green_16.png")
+
     # My fonts
     myFont_title = Font(family="Helvetica", size=14, weight="bold")
     myFont_title_normal = Font(family="Helvetica", size=13, weight="bold")
@@ -929,10 +940,11 @@ if __name__ == "__main__":
     scroll_widget.config(command=text_1.yview)
 
     # Status Label
-    label_status = tk.Label(root, text="Listening for incoming connections...", relief=tk.SUNKEN, bd=0, anchor=tk.E,
+    label_status = tk.Label(root, text="Connected", image=green_img, compound=tk.LEFT, relief=tk.SUNKEN, bd=0, anchor=tk.E,
                             padx=10)
     label_status.configure(font=myFont_normal)
     label_status.grid(row=3, column=0, columnspan=2, sticky=tk.W + tk.E)
+    label_status.grid_remove()
 
     # Create Tab style
     tab_style = ttk.Style()

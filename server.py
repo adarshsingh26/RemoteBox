@@ -289,6 +289,7 @@ def stop_listener():
     if CLIENT_CONNECTED:
         connection.send_data(command_client_socket, COMMAND_HEADER_SIZE, bytes("disconnect", "utf-8"))
     # Closing all the sockets
+    print("hii")
     if server_socket:
         server_socket.close()
     close_sockets()
@@ -308,12 +309,14 @@ def stop_listener():
         name_text.grid_forget()
         name_text.configure(state="normal")
         name_text.delete('1.0', tk.END)
-
+    print("bye")
+    label_status.configure(font=myFont_normal, text="Idle", image=red_img)
     # Enable buttons
     connection_frame.grid(row=1, column=0, padx=120, pady=80, sticky=tk.W)
     button_start.configure(state=tk.NORMAL)
     r2.configure(state=tk.NORMAL)
     r1.configure(state=tk.NORMAL)
+    label_status.configure(font=myFont_normal, text="Idle", image=red_img)
     # label_initial.grid(row=0, column=0, pady=35, sticky=tk.N)
 
     # Disable button
@@ -370,7 +373,6 @@ def stop_listener():
 #             print("Invalid option.Choose either 1 or 2")
 #     return server_ip
 
-
 def login(sock):
     global command_client_socket, remote_client_socket, chat_client_socket, file_client_socket, thread1, \
         CLIENT_CONNECTED
@@ -379,6 +381,7 @@ def login(sock):
         while accept:
             print("\n")
             print("Listening for incoming connections")
+            label_status.configure(font=myFont_normal, text="Listening for incoming connections", image=yellow_img)
             command_client_socket, address = sock.accept()
             print(f"Login request from {address[0]}...")
             pass_recv = connection.receive_data(command_client_socket, 2, bytes(), 1024)[0].decode("utf-8")
@@ -390,6 +393,7 @@ def login(sock):
                 file_client_socket, address = sock.accept()
                 print("\n")
                 print(f"Connection from {address[0]} has been established!")
+                label_status.configure(font=myFont_normal, text="Connected", image=green_img)
                 # thread for listening to commands
                 thread1 = Thread(target=listen_for_commands, name="listener_for_commands", daemon=True)
                 thread1.start()
@@ -406,6 +410,7 @@ def login(sock):
                 print(f"Wrong password entered by {address[0]}")
                 command_client_socket.close()
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
+        label_status.configure(font=myFont_normal, text="Idle", image=red_img)
         print(e.strerror)
 
 
@@ -549,6 +554,11 @@ if __name__ == "__main__":
     my_notebook = ttk.Notebook(root)
     my_notebook.grid(row=0, column=0, pady=5, columnspan=2)
 
+    #Images
+    yellow_img = tk.PhotoImage(file="yellow_16.png")
+    green_img = tk.PhotoImage(file="green_16.png")
+    red_img = tk.PhotoImage(file="red_16.png")
+
     # <------Connection Tab -------------->
     listener_frame = tk.LabelFrame(my_notebook, bd=0)
     listener_frame.grid(row=0, column=0)
@@ -640,8 +650,7 @@ if __name__ == "__main__":
     scroll_widget.config(command=text_1.yview)
 
     # Status Label
-    label_status = tk.Label(root, text="Listening for incoming connections...", relief=tk.SUNKEN, bd=0, anchor=tk.E,
-                            padx=10)
+    label_status = tk.Label(root, text="Idle", image=red_img, compound=tk.LEFT, relief=tk.SUNKEN, bd=0, anchor=tk.E, padx=10)
     label_status.configure(font=myFont_normal)
     label_status.grid(row=3, column=0, columnspan=2, sticky=tk.W + tk.E)
 

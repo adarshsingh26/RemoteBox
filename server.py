@@ -16,6 +16,8 @@ from pynput.mouse import Button, Controller as Mouse_controller
 from pynput.keyboard import Key, Controller as Keyboard_controller
 from pyngrok import ngrok, conf
 from pyngrok.conf import PyngrokConfig
+from datetime import datetime
+import time
 import tkinter as tk
 from tkinter.font import Font
 from tkinter import ttk
@@ -379,6 +381,7 @@ def login(sock):
         while accept:
             print("\n")
             print("Listening for incoming connections")
+            add_text_event_widget(" -> Listening for incoming connections")
             label_status.configure(font=myFont_normal, text="Listening for incoming connections", image=yellow_img)
             command_client_socket, address = sock.accept()
             print(f"Login request from {address[0]}...")
@@ -391,6 +394,7 @@ def login(sock):
                 file_client_socket, address = sock.accept()
                 print("\n")
                 print(f"Connection from {address[0]} has been established!")
+                add_text_event_widget(f" -> Connection from {address[0]} has been established!")
                 label_status.configure(font=myFont_normal, text="Connected", image=green_img)
                 # thread for listening to commands
                 thread1 = Thread(target=listen_for_commands, name="listener_for_commands", daemon=True)
@@ -406,10 +410,12 @@ def login(sock):
             else:
                 connection.send_data(command_client_socket, 2, bytes("0", "utf-8"))  # failure_code--> 0
                 print(f"Wrong password entered by {address[0]}")
+                add_text_event_widget(f" -> Wrong password entered by {address[0]}")
                 command_client_socket.close()
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
         label_status.configure(font=myFont_normal, text="Idle", image=red_img)
         print(e.strerror)
+        add_text_event_widget(f" -> {e.strerror}")
 
 
 def listen_for_commands():
@@ -419,6 +425,7 @@ def listen_for_commands():
         while listen:
             msg = connection.receive_data(command_client_socket, COMMAND_HEADER_SIZE, bytes(), 1024)[0].decode("utf-8")
             print(f"Message received:{msg}")
+            add_text_event_widget(f" -> Message received:{msg}")
             if msg == "start_capture":
                 send_screen()
             elif msg == "stop_capture":
@@ -428,6 +435,7 @@ def listen_for_commands():
                 print("Disconnect message received")
     except (ConnectionAbortedError, ConnectionResetError, OSError) as e:
         print(e.strerror)
+        add_text_event_widget(f" -> {e.strerror}")
     except ValueError:
         pass
     finally:
@@ -438,6 +446,15 @@ def listen_for_commands():
         login_thread = Thread(target=login, name="login_thread", args=(server_socket,), daemon=True)
         login_thread.start()
         print("Thread1 automatically exits")
+
+
+def add_text_event_widget(msg):
+    text_event_log.configure(state=tk.NORMAL, font=myFont_event_log_date, width=77, height=28)
+    text_event_log.insert(tk.END, "\n")
+    text_event_log.insert(tk.END, datetime.fromtimestamp(time.time()).strftime("%d-%m-%Y %I:%M %p"))
+    text_event_log.configure(font=myFont_event_log, width=77, height=28)
+    text_event_log.insert(tk.END, msg)
+    text_event_log.configure(state="disabled")
 
 
 def add_text_chat_display_widget(msg, name):
@@ -547,6 +564,8 @@ if __name__ == "__main__":
     myFont_title = Font(family="Helvetica", size=14, weight="bold")
     myFont_title_normal = Font(family="Helvetica", size=13, weight="bold")
     myFont_normal = Font(family="Helvetica", size=13)
+    myFont_event_log_date = Font(family="Helvetica", size=7)
+    myFont_event_log = Font(family="Helvetica", size=10)
 
     # My Notebook
     my_notebook = ttk.Notebook(root)
@@ -630,8 +649,8 @@ if __name__ == "__main__":
 
     # <-------------Event log Tab --------------------->
     # Event_log Frame
-    event_frame = tk.LabelFrame(my_notebook, text="Event Log", padx=20, pady=20, relief=tk.FLAT)
-    event_frame.configure(font=myFont_title)
+    event_frame = tk.LabelFrame(my_notebook, text="", padx=20, pady=20, relief=tk.FLAT)
+    event_frame.configure(font=myFont_event_log)
     event_frame.grid(row=3, column=0, columnspan=2, padx=40, pady=5, sticky=tk.W)
 
     # Scroll bar to event frame
@@ -639,13 +658,12 @@ if __name__ == "__main__":
     scroll_widget.grid(row=0, column=1, sticky=tk.N + tk.S)
 
     # Text Widget
-    text_1 = tk.Text(event_frame, width=50, height=7, font=("Helvetica", 13), padx=10, pady=10,
-                     yscrollcommand=scroll_widget.set)
-    text_1.insert(1.0, "By Default Show Event Logs")
-    text_1.configure(state='disabled')
-    text_1.grid(row=0, column=0)
+    text_event_log = tk.Text(event_frame, width=65, height=26, padx=10, pady=10, yscrollcommand=scroll_widget.set)
+    text_event_log.insert(1.0, "")
+    text_event_log.configure(state='disabled')
+    text_event_log.grid(row=0, column=0)
 
-    scroll_widget.config(command=text_1.yview)
+    scroll_widget.config(command=text_event_log.yview)
 
     # Status Label
     label_status = tk.Label(root, text="Idle", image=red_img, compound=tk.LEFT, relief=tk.SUNKEN, bd=0, anchor=tk.E, padx=10)

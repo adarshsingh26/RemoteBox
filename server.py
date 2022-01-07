@@ -572,16 +572,16 @@ if __name__ == "__main__":
     my_notebook.grid(row=0, column=0, pady=5, columnspan=2)
 
     #Images
-    yellow_img = tk.PhotoImage(file="yellow_16.png")
-    green_img = tk.PhotoImage(file="green_16.png")
-    red_img = tk.PhotoImage(file="red_16.png")
+    yellow_img = tk.PhotoImage(file="assets/gui_icons/yellow_16.png")
+    green_img = tk.PhotoImage(file="assets/gui_icons/green_16.png")
+    red_img = tk.PhotoImage(file="assets/gui_icons/red_16.png")
 
     # <------Connection Tab -------------->
     listener_frame = tk.LabelFrame(my_notebook, bd=0)
     listener_frame.grid(row=0, column=0)
 
     # Logo Label
-    img_logo = ImageTk.PhotoImage(Image.open("logo.png"))
+    img_logo = ImageTk.PhotoImage(Image.open("assets/gui_icons/logo.png"))
     label_note = tk.Label(listener_frame, image=img_logo, anchor=tk.CENTER)
     label_note.grid(row=0, column=0, padx=200, pady=5, columnspan=2, sticky=tk.N)
 

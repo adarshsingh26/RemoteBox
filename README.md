@@ -15,7 +15,7 @@ for connectivity between system and multithreading to achieve concurrency.
 
 ## Table Of Contents
 
- - [Demo (Coming Soon)]() 
+ - [Screenshots](#screenshots)
  - [Tech Stack](#tech-stack)
  - [Features](#features)
  - [ToDo](#todo)
@@ -24,6 +24,20 @@ for connectivity between system and multithreading to achieve concurrency.
  - [Getting Started](#getting-started)
  - [Overview of how the system works](#overview-of-how-the-system-works) 
  - [Tests](#tests)
+
+## Screenshots
+<img src="https://user-images.githubusercontent.com/84853854/148511209-2c3b9906-beb7-4e73-a460-a60bc145503e.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148511550-c53bb992-4e30-4b9f-b676-d71f289f36f6.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148514981-1a06ebe3-13b6-4cfb-a51f-1e5988595d2b.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148511993-fcce0bd7-0439-40d9-b6ea-d5f0d2a675fc.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148512240-848ad14e-ec19-4825-abe3-9fc1bdcca0ec.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148512852-f422f6ce-2b89-4597-abc4-4b96720cc940.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148513300-a6b6655c-bb73-467d-9970-2d28ac43eaa8.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148513511-c059fca9-eab3-4ee2-9b77-fc1d7c56195e.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148514253-a3ab8c0d-9636-46c1-ac89-287e080a565d.png"/>
+<img src="https://user-images.githubusercontent.com/84853854/148514780-333f35a2-c625-4c2b-bae8-7bbb52338da8.png"/>
+
+
 
 ## Tech Stack
 - **Backend:** `Python 3.7` 

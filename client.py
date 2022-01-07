@@ -765,7 +765,7 @@ if __name__ == "__main__":
     drive_img = tk.PhotoImage(file="file_icons\\drive.png")
     back_img = tk.PhotoImage(file="file_icons\\back.png")
 
-    green_img = tk.PhotoImage(file="green_16.png")
+    green_img = tk.PhotoImage(file="assets/gui_icons/green_16.png")
 
     # My fonts
     myFont_title = Font(family="Helvetica", size=14, weight="bold")
@@ -781,7 +781,7 @@ if __name__ == "__main__":
     connection_frame.grid(row=0, column=0, padx=40, pady=40, sticky=tk.N)
 
     # Logo Label
-    img_logo = ImageTk.PhotoImage(Image.open("logo.png"))
+    img_logo = ImageTk.PhotoImage(Image.open("assets/gui_icons/logo.png"))
     label_note = tk.Label(connection_frame, image=img_logo, anchor=tk.CENTER)
     label_note.grid(row=0, column=0, pady=5, columnspan=2, sticky=tk.N)
 
@@ -837,9 +837,9 @@ if __name__ == "__main__":
     access_button_frame.grid_forget()
 
     # images
-    remote_img = tk.PhotoImage(file="remote_32.png")
-    chat_img = tk.PhotoImage(file="chat_32.png")
-    file_transfer_img = tk.PhotoImage(file="file_transfer_32.png")
+    remote_img = tk.PhotoImage(file="assets/gui_icons/remote_32.png")
+    chat_img = tk.PhotoImage(file="assets/gui_icons/chat_32.png")
+    file_transfer_img = tk.PhotoImage(file="assets/gui_icons/file_transfer_32.png")
 
     # View Remote Box button
     remote_button = tk.Button(access_button_frame, text="Remote Box", image=remote_img, compound=tk.TOP, padx=2,
